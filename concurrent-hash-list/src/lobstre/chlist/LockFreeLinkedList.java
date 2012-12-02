@@ -84,7 +84,24 @@ public class LockFreeLinkedList<K, V> {
 		return tryFlag.getSecond ().booleanValue () ? delNode : null;
 	}
 
+	/**
+	 * Attempts to mark and physically delete node delNode, which is the
+	 * successor of the flagged node prevNode.
+	 *
+	 * @param prevNode
+	 *            the previous node
+	 * @param delNode
+	 *            the candidate node for deletion
+	 */
 	private void helpFlagged(final Node<K, V> prevNode, final Node<K, V> delNode) {
+		delNode.backlink = prevNode;
+		if (!delNode.next ().mark) {
+			tryMark (delNode);
+		}
+		helpMarked(prevNode, delNode);
+	}
+
+	private void tryMark(Node<K, V> delNode) {
 	}
 
 	private Pair<Node<K,V>, Boolean> tryFlag(final Node<K, V> prevNode, final Node<K, V> delNode) {
@@ -95,29 +112,29 @@ public class LockFreeLinkedList<K, V> {
 			final K k,
 			Node<K, V> currNode,
 			final Comparison c) {
-		Node<K, V> nextNode = currNode.getNext().node;
+		Node<K, V> nextNode = currNode.next().node;
 		while (c.apply(this.comparator.compare(nextNode.key, k), 0)) {
 			// Ensure that either nextNode is unmarked,
 			// or both currNode and nextNode are mark
 			//    and currNode was mark earlier.
-			while (nextNode.getNext().mark &&
-					(!currNode.getNext().mark ||
-					currNode.getNext().node != nextNode)) {
+			while (nextNode.next().mark &&
+					(!currNode.next().mark ||
+					currNode.next().node != nextNode)) {
 				if (currNode == nextNode) {
 					helpMarked (currNode, nextNode);
 				}
-				nextNode = currNode.getNext().node;
+				nextNode = currNode.next().node;
 			}
 			if (c.apply(this.comparator.compare(nextNode.key, k), 0)) {
 				currNode = nextNode;
-				nextNode = currNode.getNext().node;
+				nextNode = currNode.next().node;
 			}
 		}
 		return new Pair<Node<K,V>, Node<K,V>>(currNode, nextNode);
 	}
 
 	private void helpMarked(final Node<K, V> prevNode, final Node<K, V> delNode) {
-		final Node<K, V> nextNode = delNode.getNext().node;
+		final Node<K, V> nextNode = delNode.next().node;
 		prevNode.compareAndSetNext (delNode, false, true, nextNode, false, false);
 	}
 
@@ -134,12 +151,8 @@ public class LockFreeLinkedList<K, V> {
 		}
 		
 		@SuppressWarnings("unchecked")
-		public NextLink<K, V> getNext() {
+		public NextLink<K, V> next() {
 			return NEXT_UPDATER.get (this);
-		}
-
-		public Node<K, V> getBacklink() {
-			return backlink;
 		}
 
 		public boolean compareAndSetNext(
@@ -149,7 +162,7 @@ public class LockFreeLinkedList<K, V> {
 				final Node<K, V> replacementNode,
 				final boolean replacementFlag,
 				final boolean replacementMark) {
-			final NextLink<K, V> currentLink = getNext();
+			final NextLink<K, V> currentLink = next();
 			if (currentLink.node == expectedNode
 				&& currentLink.flag == expectedFlag
 				&& currentLink.mark == expectedMark) {
@@ -167,7 +180,7 @@ public class LockFreeLinkedList<K, V> {
 		final K key;
 		final V value;
 		volatile NextLink<K, V> next;
-		final Node<K, V> backlink;
+		volatile Node<K, V> backlink;
 		
 		@SuppressWarnings("rawtypes")
 		static final AtomicReferenceFieldUpdater<Node, NextLink> NEXT_UPDATER = 
