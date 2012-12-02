@@ -18,19 +18,59 @@ public class LockFreeLinkedList<K, V> {
 		final Node<K, V> tail = new Node<K, V> (tailKey, null);
 	}
 	
+	/**
+	 * Searches for a node with the supplied key
+	 * 
+	 * @param k
+	 *            the key instance
+	 * @return a {@link Node} instance
+	 */
 	public Node<K, V> search (final K k) {
 		final Pair<Node<K, V>, Node<K, V>> curAndNext = searchFrom (k, head);
 		Node<K, V> current = curAndNext.getFirst();
-		Node<K, V> next = curAndNext.getSecond();
- 		if (0 == this.comparator.compare(current.getKey(), k)) {
+ 		if (0 == this.comparator.compare(current.key, k)) {
  			return current;
  		} else {
  			return null;
  		}
 	}
 
-	private Pair<Node<K, V>, Node<K, V>> searchFrom(final K k, final Node<K, V> head2) {
-		return null;
+	/**
+	 * Finds two consecutive nodes n1 and n2 such that n1.key <= k < n2.key.
+	 * 
+	 * @param k
+	 *            the key instance
+	 * @param currNode
+	 *            the current node to start searching for
+	 * @return a {@link Pair} of two {@link Node} instances
+	 */
+	public Pair<Node<K, V>, Node<K, V>> searchFrom (
+			final K k, 
+			Node<K, V> currNode) {
+		Node<K, V> nextNode = currNode.getNext().node;
+		while (this.comparator.compare(nextNode.key, k) <= 0) {
+			// Ensure that either nextNode is unmarked,
+			// or both currNode and nextNode are marked
+			//    and currNode was marked earlier.
+			while (nextNode.getNext().marked &&
+					(!currNode.getNext().marked ||
+					currNode.getNext().node != nextNode)) {
+				if (currNode == nextNode) {
+					helpMarked (currNode, nextNode);
+				}
+				nextNode = currNode.getNext().node;
+			}
+			if (this.comparator.compare(nextNode.key, k) <= 0) {
+				currNode = nextNode;
+				nextNode = currNode.getNext().node;
+			}
+		}
+		return new Pair<Node<K,V>, Node<K,V>>(currNode, nextNode);
+	}
+
+	private void helpMarked(Node<K, V> currNode, Node<K, V> nextNode) {
+		// TODO Auto-generated method stub
+		
 	}
 
 	static class Node<K, V> {
@@ -41,10 +81,6 @@ public class LockFreeLinkedList<K, V> {
 			this.backlink = null;
 		}
 
-		public K getKey() {
-			return key;
-		}
-		
 		public V getValue() {
 			return value;
 		}
@@ -57,13 +93,13 @@ public class LockFreeLinkedList<K, V> {
 			return backlink;
 		}
 
-		private final K key;
-		private final V value;
-		private volatile NextLink<K, V> next;
-		private final Node<K, V> backlink;
+		final K key;
+		final V value;
+		volatile NextLink<K, V> next;
+		final Node<K, V> backlink;
 		
 		@SuppressWarnings("rawtypes")
-		private static final AtomicReferenceFieldUpdater<Node, NextLink> NEXT_UPDATER = 
+		static final AtomicReferenceFieldUpdater<Node, NextLink> NEXT_UPDATER = 
 			AtomicReferenceFieldUpdater.newUpdater (Node.class, NextLink.class, "next");
 	}
 	
@@ -77,10 +113,6 @@ public class LockFreeLinkedList<K, V> {
 			this.flagged = flagged;
 		}
 		
-		public Node<K, V> getNode() {
-			return node;
-		}
-		
 		public boolean isMarked() {
 			return marked;
 		}
@@ -89,9 +121,9 @@ public class LockFreeLinkedList<K, V> {
 			return flagged;
 		}
 		
-		private final Node<K, V> node;
-		private final boolean marked;
-		private final boolean flagged;
+		final Node<K, V> node;
+		final boolean marked;
+		final boolean flagged;
 	}
 }
 
