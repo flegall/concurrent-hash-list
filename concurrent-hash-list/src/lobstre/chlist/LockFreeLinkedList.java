@@ -11,11 +11,10 @@ public class LockFreeLinkedList<K, V> {
 
 	public LockFreeLinkedList (
 			final Comparator<K> comparator, 
-			final K headKey, 
-			final K tailKey) {
+			final K minusInfiniteKey,
+			final K plusInfiniteKey) {
 		this.comparator = comparator;
-		this.head = new Node<K, V> (headKey, null);
-		final Node<K, V> tail = new Node<K, V> (tailKey, null);
+		this.head = new Node<K, V> (minusInfiniteKey, null);
 	}
 	
 	/**
@@ -27,7 +26,7 @@ public class LockFreeLinkedList<K, V> {
 	 */
 	public Node<K, V> search (final K k) {
 		final Pair<Node<K, V>, Node<K, V>> curAndNext = searchFrom (k, head);
-		Node<K, V> current = curAndNext.getFirst();
+		final Node<K, V> current = curAndNext.getFirst();
  		if (0 == this.comparator.compare(current.key, k)) {
  			return current;
  		} else {
@@ -50,10 +49,10 @@ public class LockFreeLinkedList<K, V> {
 		Node<K, V> nextNode = currNode.getNext().node;
 		while (this.comparator.compare(nextNode.key, k) <= 0) {
 			// Ensure that either nextNode is unmarked,
-			// or both currNode and nextNode are marked
-			//    and currNode was marked earlier.
-			while (nextNode.getNext().marked &&
-					(!currNode.getNext().marked ||
+			// or both currNode and nextNode are mark
+			//    and currNode was mark earlier.
+			while (nextNode.getNext().mark &&
+					(!currNode.getNext().mark ||
 					currNode.getNext().node != nextNode)) {
 				if (currNode == nextNode) {
 					helpMarked (currNode, nextNode);
@@ -68,9 +67,9 @@ public class LockFreeLinkedList<K, V> {
 		return new Pair<Node<K,V>, Node<K,V>>(currNode, nextNode);
 	}
 
-	private void helpMarked(Node<K, V> currNode, Node<K, V> nextNode) {
-		// TODO Auto-generated method stub
-		
+	private void helpMarked(final Node<K, V> prevNode, final Node<K, V> delNode) {
+		final Node<K, V> nextNode = delNode.getNext().node;
+		prevNode.compareAndSetNext (delNode, false, true, nextNode, false, false);
 	}
 
 	static class Node<K, V> {
@@ -85,12 +84,35 @@ public class LockFreeLinkedList<K, V> {
 			return value;
 		}
 		
+		@SuppressWarnings("unchecked")
 		public NextLink<K, V> getNext() {
-			return next;
+			return NEXT_UPDATER.get (this);
 		}
-		
+
 		public Node<K, V> getBacklink() {
 			return backlink;
+		}
+
+		public boolean compareAndSetNext(
+				final Node<K, V> expectedNode,
+				final boolean expectedFlag,
+				final boolean expectedMark,
+				final Node<K, V> replacementNode,
+				final boolean replacementFlag,
+				final boolean replacementMark) {
+			final NextLink<K, V> currentLink = getNext();
+			if (currentLink.node == expectedNode
+				&& currentLink.flag == expectedFlag
+				&& currentLink.mark == expectedMark) {
+				final NextLink<K, V> update = new NextLink<K, V> (
+						replacementNode,
+						replacementFlag,
+						replacementMark);
+				return NEXT_UPDATER.compareAndSet(
+						this, currentLink, update);
+			} else {
+				return false;
+			}
 		}
 
 		final K key;
@@ -105,25 +127,17 @@ public class LockFreeLinkedList<K, V> {
 	
 	static class NextLink<K, V> {
 		public NextLink(
-				final Node<K, V> node, 
-				final boolean marked, 
-				final boolean flagged) {
+				final Node<K, V> node,
+				final boolean flag,
+				final boolean mark) {
 			this.node = node;
-			this.marked = marked;
-			this.flagged = flagged;
-		}
-		
-		public boolean isMarked() {
-			return marked;
-		}
-		
-		public boolean isFlagged() {
-			return flagged;
+			this.mark = mark;
+			this.flag = flag;
 		}
 		
 		final Node<K, V> node;
-		final boolean marked;
-		final boolean flagged;
+		final boolean mark;
+		final boolean flag;
 	}
 }
 
