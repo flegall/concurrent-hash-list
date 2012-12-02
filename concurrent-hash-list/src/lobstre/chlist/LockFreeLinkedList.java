@@ -25,7 +25,7 @@ public class LockFreeLinkedList<K, V> {
 	 * @return a {@link Node} instance
 	 */
 	public Node<K, V> search (final K k) {
-		final Pair<Node<K, V>, Node<K, V>> curAndNext = searchFrom (k, head);
+		final Pair<Node<K, V>, Node<K, V>> curAndNext = searchCurrentAndNextFrom (k, head);
 		final Node<K, V> current = curAndNext.getFirst();
  		if (0 == this.comparator.compare(current.key, k)) {
  			return current;
@@ -36,18 +36,67 @@ public class LockFreeLinkedList<K, V> {
 
 	/**
 	 * Finds two consecutive nodes n1 and n2 such that n1.key <= k < n2.key.
-	 * 
+	 *
 	 * @param k
 	 *            the key instance
 	 * @param currNode
 	 *            the current node to start searching for
 	 * @return a {@link Pair} of two {@link Node} instances
 	 */
-	public Pair<Node<K, V>, Node<K, V>> searchFrom (
-			final K k, 
-			Node<K, V> currNode) {
+	public Pair<Node<K, V>, Node<K, V>> searchCurrentAndNextFrom (
+			final K k,
+			final Node<K, V> currNode) {
+		return searchFromInternal(k, currNode, LOWER_OR_EQUAL);
+	}
+
+	/**
+	 * Finds two consecutive nodes n1 and n2 such that n1.key < k <= n2.key.
+	 *
+	 * @param k
+	 *            the key instance
+	 * @param currNode
+	 *            the previous node to start searching for
+	 * @return a {@link Pair} of two {@link Node} instances
+	 */
+	public Pair<Node<K, V>, Node<K, V>> searchPrevAndCurrentFrom (
+			final K k,
+			final Node<K, V> currNode) {
+		return searchFromInternal(k, currNode, STRICTLY_LOWER);
+	}
+
+	public Node<K, V> delete (final K k) {
+		final Pair<Node<K, V>, Node<K, V>> search =
+				searchPrevAndCurrentFrom (k, this.head);
+		Node<K, V> prevNode = search.getFirst ();
+		final Node<K, V> delNode = search.getSecond ();
+
+		if (0 != this.comparator.compare(delNode.key, k)) {
+			// k is not found in the list.
+			return null;
+		}
+
+		final Pair<Node<K, V>, Boolean> tryFlag =
+				tryFlag (prevNode, delNode);
+		prevNode = tryFlag.getFirst();
+		if (null != prevNode) {
+			helpFlagged (prevNode, delNode);
+		}
+		return tryFlag.getSecond ().booleanValue () ? delNode : null;
+	}
+
+	private void helpFlagged(final Node<K, V> prevNode, final Node<K, V> delNode) {
+	}
+
+	private Pair<Node<K,V>, Boolean> tryFlag(final Node<K, V> prevNode, final Node<K, V> delNode) {
+		return null;
+	}
+
+	private Pair<Node<K, V>, Node<K, V>> searchFromInternal(
+			final K k,
+			Node<K, V> currNode,
+			final Comparison c) {
 		Node<K, V> nextNode = currNode.getNext().node;
-		while (this.comparator.compare(nextNode.key, k) <= 0) {
+		while (c.apply(this.comparator.compare(nextNode.key, k), 0)) {
 			// Ensure that either nextNode is unmarked,
 			// or both currNode and nextNode are mark
 			//    and currNode was mark earlier.
@@ -59,7 +108,7 @@ public class LockFreeLinkedList<K, V> {
 				}
 				nextNode = currNode.getNext().node;
 			}
-			if (this.comparator.compare(nextNode.key, k) <= 0) {
+			if (c.apply(this.comparator.compare(nextNode.key, k), 0)) {
 				currNode = nextNode;
 				nextNode = currNode.getNext().node;
 			}
@@ -139,5 +188,23 @@ public class LockFreeLinkedList<K, V> {
 		final boolean mark;
 		final boolean flag;
 	}
+
+	public interface Comparison {
+		public boolean apply (int a, int b);
+	}
+
+	public static Comparison LOWER_OR_EQUAL = new Comparison () {
+		@Override
+		public boolean apply(final int a, final int b) {
+			return a <= b;
+		}
+	};
+
+	public static Comparison STRICTLY_LOWER = new Comparison () {
+		@Override
+		public boolean apply(final int a, final int b) {
+			return a < b;
+		}
+	};
 }
 
