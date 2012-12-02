@@ -1,5 +1,7 @@
 package lobstre.chlist;
 
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+
 public class LockFreeLinkedList {
 	
 	static class Node<K, V> {
@@ -30,6 +32,10 @@ public class LockFreeLinkedList {
 		private final V value;
 		private volatile NextLink<K, V> next;
 		private final Node<K, V> backlink;
+		
+		@SuppressWarnings("rawtypes")
+		private static final AtomicReferenceFieldUpdater<Node, NextLink> NEXT_UPDATER = 
+			AtomicReferenceFieldUpdater.newUpdater (Node.class, NextLink.class, "next");
 	}
 	
 	static class NextLink<K, V> {
