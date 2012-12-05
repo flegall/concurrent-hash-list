@@ -134,6 +134,8 @@ public class LockFreeLinkedList<K, V> {
 	}
 
 	private void helpMarked(final Node<K, V> prevNode, final Node<K, V> delNode) {
+		// Attempts to physically delete the marked
+		// node delNode and unflag prevNode.
 		final Node<K, V> nextNode = delNode.next().node;
 		prevNode.compareAndSetNext (delNode, false, true, nextNode, false, false);
 	}
@@ -157,19 +159,19 @@ public class LockFreeLinkedList<K, V> {
 
 		public boolean compareAndSetNext(
 				final Node<K, V> expectedNode,
-				final boolean expectedFlag,
 				final boolean expectedMark,
+				final boolean expectedFlag,
 				final Node<K, V> replacementNode,
-				final boolean replacementFlag,
-				final boolean replacementMark) {
+				final boolean replacementMark,
+				final boolean replacementFlag) {
 			final NextLink<K, V> currentLink = next();
 			if (currentLink.node == expectedNode
-				&& currentLink.flag == expectedFlag
-				&& currentLink.mark == expectedMark) {
+				&& currentLink.mark == expectedMark
+				&& currentLink.flag == expectedFlag) {
 				final NextLink<K, V> update = new NextLink<K, V> (
 						replacementNode,
-						replacementFlag,
-						replacementMark);
+						replacementMark,
+						replacementFlag);
 				return NEXT_UPDATER.compareAndSet(
 						this, currentLink, update);
 			} else {
@@ -190,8 +192,8 @@ public class LockFreeLinkedList<K, V> {
 	static class NextLink<K, V> {
 		public NextLink(
 				final Node<K, V> node,
-				final boolean flag,
-				final boolean mark) {
+				final boolean mark,
+				final boolean flag) {
 			this.node = node;
 			this.mark = mark;
 			this.flag = flag;
