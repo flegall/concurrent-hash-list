@@ -169,6 +169,23 @@ public class LockFreeLinkedList<K, V> {
 			return NEXT_UPDATER.get (this);
 		}
 
+		/**
+		 * CAS the next pointer
+		 *
+		 * @param expectedNode
+		 *            the expected node
+		 * @param expectedMark
+		 *            the expected mark
+		 * @param expectedFlag
+		 *            the expected flag
+		 * @param replacementNode
+		 *            the replacement node
+		 * @param replacementMark
+		 *            the replacement mark
+		 * @param replacementFlag
+		 *            the replacement flag
+		 * @return null if CAS worked, or the previous value if CAS failed.
+		 */
 		public NextLink<K, V> compareAndSetNext (final Node<K, V> expectedNode,
 				final boolean expectedMark, final boolean expectedFlag,
 				final Node<K, V> replacementNode,
