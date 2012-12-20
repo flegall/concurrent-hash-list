@@ -114,14 +114,57 @@ public class LockFreeLinkedList<K, V> {
 		} while (delNode.next ().mark != true);
 	}
 
-	private Pair<Node<K, V>, Boolean> tryFlag (final Node<K, V> prevNode,
-			final Node<K, V> delNode) {
-		return null;
+	private Pair<Node<K, V>, Boolean> tryFlag (Node<K, V> prevNode,
+			final Node<K, V> targetNode) {
+		for (;;) {
+			final NextLink<K, V> next = prevNode.next ();
+			if (next.node == targetNode &&
+					!next.mark &&
+					next.flag) {
+				// Predecessor is already flagged
+				return new Pair<LockFreeLinkedList.Node<K, V>, Boolean> (
+						prevNode, Boolean.TRUE);
+			}
+			// Flagging attempt
+			final NextLink<K, V> failed = prevNode.compareAndSetNext (
+					targetNode, false, false,
+					targetNode, false, true);
+			if (null == failed) {
+				// Succesful flaging : report the success
+				return new Pair<LockFreeLinkedList.Node<K, V>, Boolean> (
+						prevNode, Boolean.TRUE);
+			}
+			if (failed.node == targetNode &&
+					failed.mark == false &&
+					failed.flag == true) {
+				// Failure due to a concurrent operation
+				// Report the failure, return a pointer to prev node.
+				return new Pair<LockFreeLinkedList.Node<K, V>, Boolean> (
+						prevNode, Boolean.FALSE);
+			}
+			while (prevNode.next ().mark) {
+				// Possibly a failure due to marking,
+				// Traverse a chain of backlinks to reach an unmarked node.
+				prevNode = prevNode.backlink;
+			}
+			// Search again
+			final Pair<Node<K, V>, Node<K, V>> search = searchPrevAndCurrentFrom (
+					targetNode.key,
+					prevNode);
+			prevNode = search.getFirst ();
+			final Node<K, V> delNode = search.getSecond ();
+			if (delNode != targetNode) {
+				// targetNode got deleted
+				// report the failure, return no pointer.
+				return new Pair<LockFreeLinkedList.Node<K, V>, Boolean> (
+						null, Boolean.FALSE);
+			}
+		}
 	}
 
 	private Pair<Node<K, V>, Node<K, V>> searchFromInternal (
 			final K k,
-			Node<K, V> currNode, 
+			Node<K, V> currNode,
 			final Comparison c) {
 		Node<K, V> nextNode = currNode.next ().node;
 		while (c.apply (this.comparator.compare (nextNode.key, k), 0)) {
@@ -210,9 +253,9 @@ public class LockFreeLinkedList<K, V> {
 		volatile Node<K, V> backlink;
 
 		@SuppressWarnings("rawtypes")
-		static final AtomicReferenceFieldUpdater<Node, NextLink> NEXT_UPDATER = 
-			AtomicReferenceFieldUpdater
-				.newUpdater (Node.class, NextLink.class, "next");
+		static final AtomicReferenceFieldUpdater<Node, NextLink> NEXT_UPDATER =
+				AtomicReferenceFieldUpdater
+						.newUpdater (Node.class, NextLink.class, "next");
 	}
 
 	static class NextLink<K, V> {
