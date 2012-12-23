@@ -35,6 +35,21 @@ public class TestLockFreeLinkedList {
 	}
 	
 	@Test
+	public void testInsertReverse () {
+		final LockFreeLinkedList ll = new LockFreeLinkedList ();
+		
+		for (int i = 24; i >= 0; i--) {
+			testInsert (ll, i, Integer.toString (i));
+		}
+		
+		assertNull (ll.insert (0, "VOID"));
+		
+		for (int i = 5; i < 25; i++) {
+			assertNull (ll.insert (i, "VOID"));
+		}
+	}
+	
+	@Test
 	public void testDelete () {
 		final LockFreeLinkedList ll = new LockFreeLinkedList ();
 		for (int i = 0; i < 25; i++) {
