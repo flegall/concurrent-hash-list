@@ -9,14 +9,21 @@ public class LockFreeLinkedList {
 	private final Node head;
 	private final Comparator<Object> comparator;
 
-	public LockFreeLinkedList (final Comparator<Object> comparator) {
-		this.comparator = comparator;
-		Object minusInfiniteKey = new Object ();
-		Object minusInfiteValue = new Object ();
-		this.head = new Node (minusInfiniteKey, minusInfiteValue);
-		Object plusInfiniteKey = new Object ();
-		Object plusInfiniteValue = new Object ();
-		final Node tail = new Node (plusInfiniteKey, plusInfiniteValue);
+	public LockFreeLinkedList (final Comparator<Integer> comparator) {
+		this.comparator = new Comparator<Object> () {
+			@Override
+			public int compare (Object o1, Object o2) {
+				if (o1 == MINUS_INFINITE_KEY || o2 == PLUS_INFINITE_KEY) {
+					return -1;
+				}
+				if (o1 == PLUS_INFINITE_KEY || o2 == MINUS_INFINITE_KEY) {
+					return +1;
+				}
+				return comparator.compare ((Integer)o1, (Integer)o2);
+			}
+		};
+		this.head = new Node (MINUS_INFINITE_KEY, MINUS_INFINITE_KEY);
+		final Node tail = new Node (PLUS_INFINITE_KEY, PLUS_INFINITE_KEY);
 		this.head.compareAndSetNext (null, false, false, tail, false, false);
 	}
 
@@ -334,11 +341,12 @@ public class LockFreeLinkedList {
 			return a <= b;
 		}
 	};
-
 	public static Comparison STRICTLY_LOWER = new Comparison () {
 		@Override
 		public boolean apply (final int a, final int b) {
 			return a < b;
 		}
 	};
+	private static final Object MINUS_INFINITE_KEY = new Object ();
+	private static final Object PLUS_INFINITE_KEY = new Object ();
 }
