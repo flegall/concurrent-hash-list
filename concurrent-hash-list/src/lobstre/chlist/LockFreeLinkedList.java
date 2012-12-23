@@ -286,10 +286,6 @@ public class LockFreeLinkedList {
 			this.backlink = null;
 		}
 
-		public Object getValue () {
-			return value;
-		}
-
 		public NextLink next () {
 			return NEXT_UPDATER.get (this);
 		}
