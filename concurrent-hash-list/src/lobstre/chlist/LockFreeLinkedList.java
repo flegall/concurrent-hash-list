@@ -10,9 +10,12 @@ public class LockFreeLinkedList<K, V> {
 	private final Comparator<K> comparator;
 
 	public LockFreeLinkedList (final Comparator<K> comparator,
-			final K minusInfiniteKey, final K plusInfiniteKey) {
+			final K minusInfiniteKey, final K plusInfiniteKey, 
+			final V minusInfiteValue, final V plusInfiniteValue) {
 		this.comparator = comparator;
-		this.head = new Node<K, V> (minusInfiniteKey, null);
+		this.head = new Node<K, V> (minusInfiniteKey, minusInfiteValue);
+		final Node<K, V> tail = new Node<K, V> (plusInfiniteKey, plusInfiniteValue);
+		this.head.compareAndSetNext (null, false, false, tail, false, false);
 	}
 
 	/**
