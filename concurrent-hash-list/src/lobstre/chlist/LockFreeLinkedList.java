@@ -19,7 +19,7 @@ public class LockFreeLinkedList {
 				if (o1 == PLUS_INFINITE_KEY || o2 == MINUS_INFINITE_KEY) {
 					return +1;
 				}
-				return comparator.compare ((Integer)o1, (Integer)o2);
+				return comparator.compare ((Integer) o1, (Integer) o2);
 			}
 		};
 		this.head = new Node (MINUS_INFINITE_KEY, MINUS_INFINITE_KEY);
@@ -45,48 +45,18 @@ public class LockFreeLinkedList {
 		}
 	}
 
-	/**
-	 * Finds two consecutive nodes n1 and n2 such that n1.key <= k < n2.key.
-	 * 
-	 * @param k
-	 *            the key instance
-	 * @param currNode
-	 *            the current node to start searching for
-	 * @return a {@link Pair} of two {@link Node} instances
-	 */
-	public Pair<Node, Node> searchCurrentAndNextFrom (
-			final Object k,
-			final Node currNode) {
-		return searchFromInternal (k, currNode, LOWER_OR_EQUAL);
-	}
-
-	/**
-	 * Finds two consecutive nodes n1 and n2 such that n1.key < k <= n2.key.
-	 * 
-	 * @param k
-	 *            the key instance
-	 * @param currNode
-	 *            the previous node to start searching for
-	 * @return a {@link Pair} of two {@link Node} instances
-	 */
-	public Pair<Node, Node> searchPrevAndCurrentFrom (
-			final Object k,
-			final Node currNode) {
-		return searchFromInternal (k, currNode, STRICTLY_LOWER);
-	}
-
-	public Node delete (final Object k) {
+	public Node delete (final int k) {
 		final Pair<Node, Node> search = searchPrevAndCurrentFrom (
-				k,
+				Integer.valueOf (k),
 				this.head);
 		Node prevNode = search.getFirst ();
 		final Node delNode = search.getSecond ();
-
+	
 		if (0 != this.comparator.compare (delNode.key, k)) {
 			// k is not found in the list.
 			return null;
 		}
-
+	
 		final Pair<Node, Boolean> tryFlag = tryFlag (prevNode, delNode);
 		prevNode = tryFlag.getFirst ();
 		if (null != prevNode) {
@@ -94,10 +64,10 @@ public class LockFreeLinkedList {
 		}
 		return tryFlag.getSecond ().booleanValue () ? delNode : null;
 	}
-	
-	public Node insert (final Object k, final Object v) {
+
+	public Node insert (final int k, final Object v) {
 		Pair<Node, Node> search = 
-				searchCurrentAndNextFrom (k, head);
+				searchCurrentAndNextFrom (Integer.valueOf (k), head);
 		Node prevNode = search.getFirst ();
 		Node nextNode = search.getSecond ();
 		
@@ -141,6 +111,36 @@ public class LockFreeLinkedList {
 				return null;
 			}
 		}
+	}
+
+	/**
+	 * Finds two consecutive nodes n1 and n2 such that n1.key <= k < n2.key.
+	 * 
+	 * @param k
+	 *            the key instance
+	 * @param currNode
+	 *            the current node to start searching for
+	 * @return a {@link Pair} of two {@link Node} instances
+	 */
+	private Pair<Node, Node> searchCurrentAndNextFrom (
+			final Object k,
+			final Node currNode) {
+		return searchFromInternal (k, currNode, LOWER_OR_EQUAL);
+	}
+
+	/**
+	 * Finds two consecutive nodes n1 and n2 such that n1.key < k <= n2.key.
+	 * 
+	 * @param k
+	 *            the key instance
+	 * @param currNode
+	 *            the previous node to start searching for
+	 * @return a {@link Pair} of two {@link Node} instances
+	 */
+	private Pair<Node, Node> searchPrevAndCurrentFrom (
+			final Object k,
+			final Node currNode) {
+		return searchFromInternal (k, currNode, STRICTLY_LOWER);
 	}
 
 	/**
