@@ -3,7 +3,6 @@ package lobstre.chlist;
 import java.util.Comparator;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
-import lobstre.chlist.LockFreeLinkedList.Node;
 import lobstre.chlist.util.Pair;
 
 public class LockFreeLinkedList {
@@ -352,6 +351,14 @@ public class LockFreeLinkedList {
 			return a < b;
 		}
 	};
-	private static final Object MINUS_INFINITE_KEY = new Object ();
-	private static final Object PLUS_INFINITE_KEY = new Object ();
+	private static final Object MINUS_INFINITE_KEY = new Object () {
+		public String toString() {
+			return "MINUS_INFINITE_KEY";
+		};
+	};
+	private static final Object PLUS_INFINITE_KEY = new Object () {
+		public String toString() {
+			return "PLUS_INFINITE_KEY";
+		};
+	};
 }

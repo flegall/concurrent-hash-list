@@ -4,6 +4,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 import lobstre.chlist.LockFreeLinkedList.NextLink;
 import lobstre.chlist.LockFreeLinkedList.Node;
 
@@ -31,15 +36,49 @@ public class TestLockFreeLinkedList {
 		}		
 		
 		for (int i = 0; i < 25; i++) {
-			Node search = ll.search (i);
-			assertNotNull (search);
-			
-			final Node deleted = ll.delete (i);
-			assertNotNull (deleted);
-			
-			search = ll.search (i);
-			assertNull (search);
+			testDelete (ll, i);
 		}
+	}
+	
+	@Test
+	public void testDeleteReverse () {
+		final LockFreeLinkedList ll = new LockFreeLinkedList ();
+		for (int i = 0; i < 25; i++) {
+			testInsert (ll, i, Integer.toString (i));
+		}		
+		
+		for (int i = 24; i >= 0; i--) {
+			testDelete (ll, i);
+		}
+		
+		ll.toString ();
+	}
+	
+	@Test
+	public void testDeleteRandom () {
+		final LockFreeLinkedList ll = new LockFreeLinkedList ();
+		final List<Integer> indices = new ArrayList<Integer> ();
+		for (int i = 0; i < 25; i++) {
+			testInsert (ll, i, Integer.toString (i));
+			indices.add (i);
+		}		
+		
+		Collections.shuffle (indices);
+		
+		for (final int i : indices) {
+			testDelete (ll, i);
+		}
+	}
+
+	private void testDelete (final LockFreeLinkedList ll, int i) {
+		Node search = ll.search (i);
+		assertNotNull (search);
+		
+		final Node deleted = ll.delete (i);
+		assertNotNull (deleted);
+		
+		search = ll.search (i);
+		assertNull (search);
 	}
 
 	private void testInsert (final LockFreeLinkedList ll, final int expectedKey, final String expectedValue) {
