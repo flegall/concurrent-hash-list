@@ -26,6 +26,12 @@ public class TestLockFreeLinkedList {
 		for (int i = 5; i < 25; i++) {
 			testInsert (ll, i, Integer.toString (i));
 		}
+		
+		assertNull (ll.insert (-1, "VOID"));
+		
+		for (int i = 5; i < 25; i++) {
+			assertNull (ll.insert (i, "VOID"));
+		}
 	}
 	
 	@Test
@@ -37,6 +43,10 @@ public class TestLockFreeLinkedList {
 		
 		for (int i = 0; i < 25; i++) {
 			testDelete (ll, i);
+		}
+		
+		for (int i = 0; i < 25; i++) {
+			assertNull (ll.delete (i));
 		}
 	}
 	
@@ -68,11 +78,13 @@ public class TestLockFreeLinkedList {
 		for (final int i : indices) {
 			testDelete (ll, i);
 		}
+		
+		ll.toString ();
 	}
 
 	private void testDelete (final LockFreeLinkedList ll, int i) {
 		Node search = ll.search (i);
-		assertNotNull (search);
+		checkNode (search, i, Integer.toString (i));
 		
 		final Node deleted = ll.delete (i);
 		assertNotNull (deleted);
@@ -81,11 +93,17 @@ public class TestLockFreeLinkedList {
 		assertNull (search);
 	}
 
-	private void testInsert (final LockFreeLinkedList ll, final int expectedKey, final String expectedValue) {
+	private void testInsert (
+			final LockFreeLinkedList ll, 
+			final int expectedKey, 
+			final String expectedValue) {
+		Node search = ll.search (expectedKey);
+		assertNull (search);
+		
 		final Node inserted = ll.insert (expectedKey, expectedValue);
 		checkNode (inserted, expectedKey, expectedValue);
 		
-		final Node search = ll.search (expectedKey);
+		search = ll.search (expectedKey);
 		checkNode (search, expectedKey, expectedValue);
 	}
 
