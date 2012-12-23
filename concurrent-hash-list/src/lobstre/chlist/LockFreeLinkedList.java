@@ -5,16 +5,18 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import lobstre.chlist.util.Pair;
 
-public class LockFreeLinkedList<K, V> {
-	private final Node<K, V> head;
-	private final Comparator<K> comparator;
+public class LockFreeLinkedList {
+	private final Node head;
+	private final Comparator<Object> comparator;
 
-	public LockFreeLinkedList (final Comparator<K> comparator,
-			final K minusInfiniteKey, final K plusInfiniteKey, 
-			final V minusInfiteValue, final V plusInfiniteValue) {
+	public LockFreeLinkedList (final Comparator<Object> comparator) {
 		this.comparator = comparator;
-		this.head = new Node<K, V> (minusInfiniteKey, minusInfiteValue);
-		final Node<K, V> tail = new Node<K, V> (plusInfiniteKey, plusInfiniteValue);
+		Object minusInfiniteKey = new Object ();
+		Object minusInfiteValue = new Object ();
+		this.head = new Node (minusInfiniteKey, minusInfiteValue);
+		Object plusInfiniteKey = new Object ();
+		Object plusInfiniteValue = new Object ();
+		final Node tail = new Node (plusInfiniteKey, plusInfiniteValue);
 		this.head.compareAndSetNext (null, false, false, tail, false, false);
 	}
 
@@ -25,10 +27,10 @@ public class LockFreeLinkedList<K, V> {
 	 *            the key instance
 	 * @return a {@link Node} instance
 	 */
-	public Node<K, V> search (final K k) {
-		final Pair<Node<K, V>, Node<K, V>> curAndNext =
-				searchCurrentAndNextFrom (k, head);
-		final Node<K, V> current = curAndNext.getFirst ();
+	public Node search (final int k) {
+		final Pair<Node, Node> curAndNext =
+				searchCurrentAndNextFrom (Integer.valueOf (k), head);
+		final Node current = curAndNext.getFirst ();
 		if (0 == this.comparator.compare (current.key, k)) {
 			return current;
 		} else {
@@ -45,9 +47,9 @@ public class LockFreeLinkedList<K, V> {
 	 *            the current node to start searching for
 	 * @return a {@link Pair} of two {@link Node} instances
 	 */
-	public Pair<Node<K, V>, Node<K, V>> searchCurrentAndNextFrom (
-			final K k,
-			final Node<K, V> currNode) {
+	public Pair<Node, Node> searchCurrentAndNextFrom (
+			final Object k,
+			final Node currNode) {
 		return searchFromInternal (k, currNode, LOWER_OR_EQUAL);
 	}
 
@@ -60,25 +62,25 @@ public class LockFreeLinkedList<K, V> {
 	 *            the previous node to start searching for
 	 * @return a {@link Pair} of two {@link Node} instances
 	 */
-	public Pair<Node<K, V>, Node<K, V>> searchPrevAndCurrentFrom (
-			final K k,
-			final Node<K, V> currNode) {
+	public Pair<Node, Node> searchPrevAndCurrentFrom (
+			final Object k,
+			final Node currNode) {
 		return searchFromInternal (k, currNode, STRICTLY_LOWER);
 	}
 
-	public Node<K, V> delete (final K k) {
-		final Pair<Node<K, V>, Node<K, V>> search = searchPrevAndCurrentFrom (
+	public Node delete (final Object k) {
+		final Pair<Node, Node> search = searchPrevAndCurrentFrom (
 				k,
 				this.head);
-		Node<K, V> prevNode = search.getFirst ();
-		final Node<K, V> delNode = search.getSecond ();
+		Node prevNode = search.getFirst ();
+		final Node delNode = search.getSecond ();
 
 		if (0 != this.comparator.compare (delNode.key, k)) {
 			// k is not found in the list.
 			return null;
 		}
 
-		final Pair<Node<K, V>, Boolean> tryFlag = tryFlag (prevNode, delNode);
+		final Pair<Node, Boolean> tryFlag = tryFlag (prevNode, delNode);
 		prevNode = tryFlag.getFirst ();
 		if (null != prevNode) {
 			helpFlagged (prevNode, delNode);
@@ -86,24 +88,24 @@ public class LockFreeLinkedList<K, V> {
 		return tryFlag.getSecond ().booleanValue () ? delNode : null;
 	}
 	
-	public Node<K, V> insert (final K k, final V v) {
-		Pair<Node<K, V>, Node<K, V>> search = 
+	public Node insert (final Object k, final Object v) {
+		Pair<Node, Node> search = 
 				searchCurrentAndNextFrom (k, head);
-		Node<K, V> prevNode = search.getFirst ();
-		Node<K, V> nextNode = search.getSecond ();
+		Node prevNode = search.getFirst ();
+		Node nextNode = search.getSecond ();
 		
 		if (prevNode.key.equals (k)) {
 			return null;
 		}
 		
-		final Node<K, V> newNode = new Node<K, V> (k, v);
+		final Node newNode = new Node (k, v);
 		for (;;) {
-			final NextLink<K, V> prevNext = prevNode.next ();
+			final NextLink prevNext = prevNode.next ();
 			if (prevNext.flag == true) {
 				// If predecessor is flagged : help deletion to complete
 				helpFlagged (prevNode, prevNext.node);
 			} else {
-				final NextLink<K, V> failed = prevNode.compareAndSetNext (
+				final NextLink failed = prevNode.compareAndSetNext (
 					nextNode, false, false, 
 					newNode, false, false);
 				if (failed == null) {
@@ -144,8 +146,8 @@ public class LockFreeLinkedList<K, V> {
 	 *            the candidate node for deletion
 	 */
 	private void helpFlagged (
-			final Node<K, V> prevNode,
-			final Node<K, V> delNode) {
+			final Node prevNode,
+			final Node delNode) {
 		delNode.backlink = prevNode;
 		if (!delNode.next ().mark) {
 			tryMark (delNode);
@@ -153,10 +155,10 @@ public class LockFreeLinkedList<K, V> {
 		helpMarked (prevNode, delNode);
 	}
 
-	private void tryMark (final Node<K, V> delNode) {
+	private void tryMark (final Node delNode) {
 		do {
-			final Node<K, V> nextNode = delNode.next ().node;
-			final NextLink<K, V> failedLink = delNode.compareAndSetNext (
+			final Node nextNode = delNode.next ().node;
+			final NextLink failedLink = delNode.compareAndSetNext (
 					nextNode, false, false,
 					nextNode, true, false);
 			if (failedLink.mark == false && failedLink.flag == true) {
@@ -165,24 +167,24 @@ public class LockFreeLinkedList<K, V> {
 		} while (delNode.next ().mark != true);
 	}
 
-	private Pair<Node<K, V>, Boolean> tryFlag (Node<K, V> prevNode,
-			final Node<K, V> targetNode) {
+	private Pair<Node, Boolean> tryFlag (Node prevNode,
+			final Node targetNode) {
 		for (;;) {
-			final NextLink<K, V> next = prevNode.next ();
+			final NextLink next = prevNode.next ();
 			if (next.node == targetNode &&
 					!next.mark &&
 					next.flag) {
 				// Predecessor is already flagged
-				return new Pair<LockFreeLinkedList.Node<K, V>, Boolean> (
+				return new Pair<Node, Boolean> (
 						prevNode, Boolean.TRUE);
 			}
 			// Flagging attempt
-			final NextLink<K, V> failed = prevNode.compareAndSetNext (
+			final NextLink failed = prevNode.compareAndSetNext (
 					targetNode, false, false,
 					targetNode, false, true);
 			if (null == failed) {
-				// Succesful flaging : report the success
-				return new Pair<LockFreeLinkedList.Node<K, V>, Boolean> (
+				// Successful flaging : report the success
+				return new Pair<Node, Boolean> (
 						prevNode, Boolean.TRUE);
 			}
 			if (failed.node == targetNode &&
@@ -190,7 +192,7 @@ public class LockFreeLinkedList<K, V> {
 					failed.flag == true) {
 				// Failure due to a concurrent operation
 				// Report the failure, return a pointer to prev node.
-				return new Pair<LockFreeLinkedList.Node<K, V>, Boolean> (
+				return new Pair<Node, Boolean> (
 						prevNode, Boolean.FALSE);
 			}
 			while (prevNode.next ().mark) {
@@ -199,25 +201,25 @@ public class LockFreeLinkedList<K, V> {
 				prevNode = prevNode.backlink;
 			}
 			// Search again
-			final Pair<Node<K, V>, Node<K, V>> search = searchPrevAndCurrentFrom (
+			final Pair<Node, Node> search = searchPrevAndCurrentFrom (
 					targetNode.key,
 					prevNode);
 			prevNode = search.getFirst ();
-			final Node<K, V> delNode = search.getSecond ();
+			final Node delNode = search.getSecond ();
 			if (delNode != targetNode) {
 				// targetNode got deleted
 				// report the failure, return no pointer.
-				return new Pair<LockFreeLinkedList.Node<K, V>, Boolean> (
+				return new Pair<Node, Boolean> (
 						null, Boolean.FALSE);
 			}
 		}
 	}
 
-	private Pair<Node<K, V>, Node<K, V>> searchFromInternal (
-			final K k,
-			Node<K, V> currNode,
+	private Pair<Node, Node> searchFromInternal (
+			final Object k,
+			Node currNode,
 			final Comparison c) {
-		Node<K, V> nextNode = currNode.next ().node;
+		Node nextNode = currNode.next ().node;
 		while (c.apply (this.comparator.compare (nextNode.key, k), 0)) {
 			// Ensure that either nextNode is unmarked,
 			// or both currNode and nextNode are mark
@@ -234,32 +236,31 @@ public class LockFreeLinkedList<K, V> {
 				nextNode = currNode.next ().node;
 			}
 		}
-		return new Pair<Node<K, V>, Node<K, V>> (currNode, nextNode);
+		return new Pair<Node, Node> (currNode, nextNode);
 	}
 
-	private void helpMarked (final Node<K, V> prevNode, final Node<K, V> delNode) {
+	private void helpMarked (final Node prevNode, final Node delNode) {
 		// Attempts to physically delete the marked
 		// node delNode and unflag prevNode.
-		final Node<K, V> nextNode = delNode.next ().node;
+		final Node nextNode = delNode.next ().node;
 		prevNode.compareAndSetNext (
 				delNode, false, true,
 				nextNode, false, false);
 	}
 
-	static class Node<K, V> {
-		public Node (final K key, final V value) {
+	static class Node {
+		public Node (final Object key, final Object value) {
 			this.key = key;
 			this.value = value;
-			this.next = new NextLink<K, V> (null, false, false);
+			this.next = new NextLink (null, false, false);
 			this.backlink = null;
 		}
 
-		public V getValue () {
+		public Object getValue () {
 			return value;
 		}
 
-		@SuppressWarnings("unchecked")
-		public NextLink<K, V> next () {
+		public NextLink next () {
 			return NEXT_UPDATER.get (this);
 		}
 
@@ -280,15 +281,15 @@ public class LockFreeLinkedList<K, V> {
 		 *            the replacement flag
 		 * @return null if CAS worked, or the previous value if CAS failed.
 		 */
-		public NextLink<K, V> compareAndSetNext (final Node<K, V> expectedNode,
+		public NextLink compareAndSetNext (final Node expectedNode,
 				final boolean expectedMark, final boolean expectedFlag,
-				final Node<K, V> replacementNode,
+				final Node replacementNode,
 				final boolean replacementMark, final boolean replacementFlag) {
-			final NextLink<K, V> currentLink = next ();
+			final NextLink currentLink = next ();
 			if (currentLink.node == expectedNode
 					&& currentLink.mark == expectedMark
 					&& currentLink.flag == expectedFlag) {
-				final NextLink<K, V> update = new NextLink<K, V> (
+				final NextLink update = new NextLink (
 						replacementNode, replacementMark, replacementFlag);
 				final boolean set = NEXT_UPDATER.compareAndSet (
 						this, currentLink, update);
@@ -298,20 +299,19 @@ public class LockFreeLinkedList<K, V> {
 			}
 		}
 
-		final K key;
-		final V value;
-		volatile NextLink<K, V> next;
-		volatile Node<K, V> backlink;
+		final Object key;
+		final Object value;
+		volatile NextLink next;
+		volatile Node backlink;
 
-		@SuppressWarnings("rawtypes")
 		static final AtomicReferenceFieldUpdater<Node, NextLink> NEXT_UPDATER =
 				AtomicReferenceFieldUpdater
 						.newUpdater (Node.class, NextLink.class, "next");
 	}
 
-	static class NextLink<K, V> {
+	static class NextLink {
 		public NextLink (
-				final Node<K, V> node,
+				final Node node,
 				final boolean mark,
 				final boolean flag) {
 			this.node = node;
@@ -319,7 +319,7 @@ public class LockFreeLinkedList<K, V> {
 			this.flag = flag;
 		}
 
-		final Node<K, V> node;
+		final Node node;
 		final boolean mark;
 		final boolean flag;
 	}
