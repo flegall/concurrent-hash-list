@@ -171,7 +171,9 @@ public class LockFreeLinkedList {
 			final NextLink failedLink = delNode.compareAndSetNext (
 					nextNode, false, false,
 					nextNode, true, false);
-			if (failedLink.mark == false && failedLink.flag == true) {
+			if (null != failedLink && 
+					failedLink.mark == false && 
+					failedLink.flag == true) {
 				helpFlagged (delNode, failedLink.node);
 			}
 		} while (delNode.next ().mark != true);

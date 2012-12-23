@@ -22,6 +22,25 @@ public class TestLockFreeLinkedList {
 			testInsert (ll, i, Integer.toString (i));
 		}
 	}
+	
+	@Test
+	public void testDelete () {
+		final LockFreeLinkedList ll = new LockFreeLinkedList ();
+		for (int i = 0; i < 25; i++) {
+			testInsert (ll, i, Integer.toString (i));
+		}		
+		
+		for (int i = 0; i < 25; i++) {
+			Node search = ll.search (i);
+			assertNotNull (search);
+			
+			final Node deleted = ll.delete (i);
+			assertNotNull (deleted);
+			
+			search = ll.search (i);
+			assertNull (search);
+		}
+	}
 
 	private void testInsert (final LockFreeLinkedList ll, final int expectedKey, final String expectedValue) {
 		final Node inserted = ll.insert (expectedKey, expectedValue);
