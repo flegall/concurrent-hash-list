@@ -17,6 +17,10 @@ public class TestLockFreeLinkedList {
 		testInsert (ll, -1, "-1");
 		testInsert (ll, 0, "0");
 		testInsert (ll, 1, "1");
+		
+		for (int i = 5; i < 25; i++) {
+			testInsert (ll, i, Integer.toString (i));
+		}
 	}
 
 	private void testInsert (final LockFreeLinkedList ll, final int expectedKey, final String expectedValue) {
