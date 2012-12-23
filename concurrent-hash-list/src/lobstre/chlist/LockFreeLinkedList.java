@@ -82,6 +82,54 @@ public class LockFreeLinkedList<K, V> {
 		}
 		return tryFlag.getSecond ().booleanValue () ? delNode : null;
 	}
+	
+	public Node<K, V> insert (final K k, final V v) {
+		Pair<Node<K, V>, Node<K, V>> search = 
+				searchCurrentAndNextFrom (k, head);
+		Node<K, V> prevNode = search.getFirst ();
+		Node<K, V> nextNode = search.getSecond ();
+		
+		if (prevNode.key.equals (k)) {
+			return null;
+		}
+		
+		final Node<K, V> newNode = new Node<K, V> (k, v);
+		for (;;) {
+			final NextLink<K, V> prevNext = prevNode.next ();
+			if (prevNext.flag == true) {
+				// If predecessor is flagged : help deletion to complete
+				helpFlagged (prevNode, prevNext.node);
+			} else {
+				final NextLink<K, V> failed = prevNode.compareAndSetNext (
+					nextNode, false, false, 
+					newNode, false, false);
+				if (failed == null) {
+					// Success
+					return newNode;
+				} else {
+					// Failure
+					if (failed.mark == false && failed.flag == true) {
+						// Failure due to flagging : 
+						// Help complete deletion
+						helpFlagged (prevNode, failed.node);
+					}
+					// Possibly a failure due to marking 
+					// Help complete deletion: traverse the backlink chain
+					while (prevNode.next.mark == true) {
+						prevNode = prevNode.backlink;
+					}
+				}
+			}
+			
+			// Search again from prevNode
+			search = searchCurrentAndNextFrom (k, prevNode);
+			prevNode = search.getFirst ();
+			nextNode = search.getSecond ();
+			if (prevNode.key.equals (k)) {
+				return null;
+			}
+		}
+	}
 
 	/**
 	 * Attempts to mark and physically delete node delNode, which is the
