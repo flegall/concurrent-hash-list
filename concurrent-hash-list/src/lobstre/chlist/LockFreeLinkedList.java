@@ -3,13 +3,14 @@ package lobstre.chlist;
 import java.util.Comparator;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
+import lobstre.chlist.LockFreeLinkedList.Node;
 import lobstre.chlist.util.Pair;
 
 public class LockFreeLinkedList {
 	private final Node head;
 	private final Comparator<Object> comparator;
 
-	public LockFreeLinkedList (final Comparator<Integer> comparator) {
+	public LockFreeLinkedList () {
 		this.comparator = new Comparator<Object> () {
 			@Override
 			public int compare (Object o1, Object o2) {
@@ -19,12 +20,14 @@ public class LockFreeLinkedList {
 				if (o1 == PLUS_INFINITE_KEY || o2 == MINUS_INFINITE_KEY) {
 					return +1;
 				}
-				return comparator.compare ((Integer) o1, (Integer) o2);
+				
+				final Integer i1 = (Integer) o1;
+				final Integer i2 = (Integer) o2;
+				return i1.compareTo (i2);
 			}
 		};
-		this.head = new Node (MINUS_INFINITE_KEY, MINUS_INFINITE_KEY);
-		final Node tail = new Node (PLUS_INFINITE_KEY, PLUS_INFINITE_KEY);
-		this.head.compareAndSetNext (null, false, false, tail, false, false);
+		final Node tail = new Node (PLUS_INFINITE_KEY, PLUS_INFINITE_KEY, null);
+		this.head = new Node (MINUS_INFINITE_KEY, MINUS_INFINITE_KEY, tail);
 	}
 
 	/**
@@ -75,8 +78,8 @@ public class LockFreeLinkedList {
 			return null;
 		}
 		
-		final Node newNode = new Node (k, v);
 		for (;;) {
+			final Node newNode = new Node (k, v, nextNode);
 			final NextLink prevNext = prevNode.next ();
 			if (prevNext.flag == true) {
 				// If predecessor is flagged : help deletion to complete
@@ -256,10 +259,10 @@ public class LockFreeLinkedList {
 	}
 
 	static class Node {
-		public Node (final Object key, final Object value) {
+		public Node (final Object key, final Object value, Node nextNode) {
 			this.key = key;
 			this.value = value;
-			this.next = new NextLink (null, false, false);
+			this.next = new NextLink (nextNode, false, false);
 			this.backlink = null;
 		}
 
