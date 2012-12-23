@@ -36,7 +36,7 @@ public class LockFreeLinkedList {
 	 *            the key instance
 	 * @return a {@link Node} instance
 	 */
-	public Node search (final int k) {
+	 Node search (final int k) {
 		final Pair<Node, Node> curAndNext =
 				searchCurrentAndNextFrom (Integer.valueOf (k), head);
 		final Node current = curAndNext.getFirst ();
@@ -47,7 +47,12 @@ public class LockFreeLinkedList {
 		}
 	}
 
-	public Node delete (final int k) {
+	/**
+	 * Deletes a Node from the list
+	 * @param k the node's key
+	 * @return the deleted Node if found, null otherwise
+	 */
+	Node delete (final int k) {
 		final Pair<Node, Node> search = searchPrevAndCurrentFrom (
 				Integer.valueOf (k),
 				this.head);
@@ -67,7 +72,17 @@ public class LockFreeLinkedList {
 		return tryFlag.getSecond ().booleanValue () ? delNode : null;
 	}
 
-	public Node insert (final int k, final Object v) {
+	/**
+	 * Inserts a node into the list
+	 * 
+	 * @param k
+	 *            the node's key
+	 * @param v
+	 *            the node's value
+	 * @return the insert Node if inserted, null if a previous node already
+	 *         exists
+	 */
+	Node insert (final int k, final Object v) {
 		Pair<Node, Node> search = 
 				searchCurrentAndNextFrom (Integer.valueOf (k), head);
 		Node prevNode = search.getFirst ();
@@ -113,6 +128,10 @@ public class LockFreeLinkedList {
 				return null;
 			}
 		}
+	}
+	
+	Node getHead () {
+		return this.head;
 	}
 
 	/**
@@ -339,24 +358,27 @@ public class LockFreeLinkedList {
 		public boolean apply (int a, int b);
 	}
 
-	public static Comparison LOWER_OR_EQUAL = new Comparison () {
+	static Comparison LOWER_OR_EQUAL = new Comparison () {
 		@Override
 		public boolean apply (final int a, final int b) {
 			return a <= b;
 		}
 	};
-	public static Comparison STRICTLY_LOWER = new Comparison () {
+	
+	static Comparison STRICTLY_LOWER = new Comparison () {
 		@Override
 		public boolean apply (final int a, final int b) {
 			return a < b;
 		}
 	};
-	private static final Object MINUS_INFINITE_KEY = new Object () {
+	
+	static final Object MINUS_INFINITE_KEY = new Object () {
 		public String toString() {
 			return "MINUS_INFINITE_KEY";
 		};
 	};
-	private static final Object PLUS_INFINITE_KEY = new Object () {
+	
+	static final Object PLUS_INFINITE_KEY = new Object () {
 		public String toString() {
 			return "PLUS_INFINITE_KEY";
 		};

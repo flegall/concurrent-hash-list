@@ -19,9 +19,13 @@ public class TestLockFreeLinkedList {
 	@Test
 	public void testInsert () {
 		final LockFreeLinkedList ll = new LockFreeLinkedList ();
+		TestMultiThreadLockFreeLinkedList.checkSanity (ll);
+		
 		testInsert (ll, -1, "-1");
 		testInsert (ll, 0, "0");
 		testInsert (ll, 1, "1");
+
+		TestMultiThreadLockFreeLinkedList.checkSanity (ll);
 		
 		for (int i = 5; i < 25; i++) {
 			testInsert (ll, i, Integer.toString (i));
@@ -32,6 +36,8 @@ public class TestLockFreeLinkedList {
 		for (int i = 5; i < 25; i++) {
 			assertNull (ll.insert (i, "VOID"));
 		}
+		
+		TestMultiThreadLockFreeLinkedList.checkSanity (ll);
 	}
 	
 	@Test
@@ -42,11 +48,15 @@ public class TestLockFreeLinkedList {
 			testInsert (ll, i, Integer.toString (i));
 		}
 		
+		TestMultiThreadLockFreeLinkedList.checkSanity (ll);
+		
 		assertNull (ll.insert (0, "VOID"));
 		
 		for (int i = 5; i < 25; i++) {
 			assertNull (ll.insert (i, "VOID"));
 		}
+		
+		TestMultiThreadLockFreeLinkedList.checkSanity (ll);
 	}
 	
 	@Test
@@ -54,7 +64,9 @@ public class TestLockFreeLinkedList {
 		final LockFreeLinkedList ll = new LockFreeLinkedList ();
 		for (int i = 0; i < 25; i++) {
 			testInsert (ll, i, Integer.toString (i));
-		}		
+		}
+		
+		TestMultiThreadLockFreeLinkedList.checkSanity (ll);
 		
 		for (int i = 0; i < 25; i++) {
 			testDelete (ll, i);
@@ -63,6 +75,8 @@ public class TestLockFreeLinkedList {
 		for (int i = 0; i < 25; i++) {
 			assertNull (ll.delete (i));
 		}
+		
+		TestMultiThreadLockFreeLinkedList.checkSanity (ll);
 	}
 	
 	@Test
@@ -70,13 +84,15 @@ public class TestLockFreeLinkedList {
 		final LockFreeLinkedList ll = new LockFreeLinkedList ();
 		for (int i = 0; i < 25; i++) {
 			testInsert (ll, i, Integer.toString (i));
-		}		
+		}
+		
+		TestMultiThreadLockFreeLinkedList.checkSanity (ll);
 		
 		for (int i = 24; i >= 0; i--) {
 			testDelete (ll, i);
 		}
 		
-		ll.toString ();
+		TestMultiThreadLockFreeLinkedList.checkSanity (ll);
 	}
 	
 	@Test
@@ -86,7 +102,9 @@ public class TestLockFreeLinkedList {
 		for (int i = 0; i < 25; i++) {
 			testInsert (ll, i, Integer.toString (i));
 			indices.add (i);
-		}		
+		}
+		
+		TestMultiThreadLockFreeLinkedList.checkSanity (ll);
 		
 		Collections.shuffle (indices);
 		
@@ -94,7 +112,7 @@ public class TestLockFreeLinkedList {
 			testDelete (ll, i);
 		}
 		
-		ll.toString ();
+		TestMultiThreadLockFreeLinkedList.checkSanity (ll);
 	}
 
 	private void testDelete (final LockFreeLinkedList ll, int i) {

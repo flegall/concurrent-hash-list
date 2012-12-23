@@ -3,11 +3,14 @@ package lobstre.chlist;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertFalse;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import lobstre.chlist.LockFreeLinkedList.Node;
 
 import org.junit.Test;
 
@@ -71,11 +74,13 @@ public class TestMultiThreadLockFreeLinkedList {
 		es.shutdown ();
 		try {
 			es.awaitTermination (3600L, TimeUnit.SECONDS);
-		} catch (InterruptedException e) {
+		} catch (final InterruptedException e) {
 			Thread.interrupted ();
 		}
 		
 		assertEquals (nThreads, counter.get ());
+		
+		checkSanity (ll);
 	}
 
 	private void testIndependentUpdates (final int nThreads) {
@@ -107,7 +112,7 @@ public class TestMultiThreadLockFreeLinkedList {
 		es.shutdown ();
 		try {
 			es.awaitTermination (3600L, TimeUnit.SECONDS);
-		} catch (InterruptedException e) {
+		} catch (final InterruptedException e) {
 			Thread.interrupted ();
 		}
 		
@@ -116,5 +121,30 @@ public class TestMultiThreadLockFreeLinkedList {
 		for (int j = 0; j < SIZE; j++) {
 			assertNull (ll.search (j));
 		}
+		
+		checkSanity (ll);
+	}
+
+	static void checkSanity (final LockFreeLinkedList ll) {
+		final Node head = ll.getHead ();
+		assertEquals (LockFreeLinkedList.MINUS_INFINITE_KEY, head.key);
+		assertEquals (LockFreeLinkedList.MINUS_INFINITE_KEY, head.value);
+		assertNull (head.backlink);
+		
+		Node node = head;
+		while (node.next.node != null) {
+			assertNotNull (node.key);
+			assertNotNull (node.value);
+			assertFalse (node.next.mark);
+			assertFalse (node.next.flag);
+			node = node.next.node;
+		}
+		
+		final Node tail = node;
+		assertEquals (LockFreeLinkedList.PLUS_INFINITE_KEY, tail.key);
+		assertEquals (LockFreeLinkedList.PLUS_INFINITE_KEY, tail.value);
+		assertFalse (tail.next.mark);
+		assertFalse (tail.next.flag);
+		assertNull (tail.next.node);
 	}
 }
