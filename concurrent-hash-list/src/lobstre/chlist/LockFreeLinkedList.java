@@ -101,7 +101,7 @@ public class LockFreeLinkedList {
 			} else {
 				final NextLink failed = prevNode.compareAndSetNext (
 					nextNode, false, false, 
-					newNode, false, false);
+					newNode, false, false, v);
 				if (failed == null) {
 					// Success
 					return newNode;
@@ -188,7 +188,7 @@ public class LockFreeLinkedList {
 			final Node nextNode = delNode.next ().node;
 			final NextLink failedLink = delNode.compareAndSetNext (
 					nextNode, false, false,
-					nextNode, true, false);
+					nextNode, true, false, null);
 			if (null != failedLink && 
 					failedLink.marked () == false && 
 					failedLink.flag == true) {
@@ -211,7 +211,7 @@ public class LockFreeLinkedList {
 			// Flagging attempt
 			final NextLink failed = prevNode.compareAndSetNext (
 					targetNode, false, false,
-					targetNode, false, true);
+					targetNode, false, true, null);
 			if (null == failed) {
 				// Successful flaging : report the success
 				return new Pair<Node, Boolean> (
@@ -273,16 +273,17 @@ public class LockFreeLinkedList {
 		// Attempts to physically delete the marked
 		// node delNode and unflag prevNode.
 		final Node nextNode = delNode.next ().node;
-		prevNode.compareAndSetNext (
+		final NextLink prevNextnext = prevNode.next ();
+        prevNode.compareAndSetNext (
 				delNode, false, true,
-				nextNode, false, false);
+				nextNode, false, false, prevNextnext.value);
 	}
 
 	static class Node {
 		public Node (final Object key, final Object value, Node nextNode) {
 			this.key = key;
 			this.value = value;
-			this.next = new NextLink (nextNode, null, false, false);
+			this.next = new NextLink (nextNode, value, false, false);
 			this.backlink = null;
 		}
 
@@ -308,15 +309,18 @@ public class LockFreeLinkedList {
 		 * @return null if CAS worked, or the previous value if CAS failed.
 		 */
 		public NextLink compareAndSetNext (final Node expectedNode,
-				final boolean expectedMark, final boolean expectedFlag,
+				final boolean expectedMark, 
+				final boolean expectedFlag,
 				final Node replacementNode,
-				final boolean replacementMark, final boolean replacementFlag) {
+				final boolean replacementMark, 
+				final boolean replacementFlag, 
+				final Object replacementValue) {
 			final NextLink currentLink = next ();
 			if (currentLink.node == expectedNode
 					&& currentLink.marked () == expectedMark
 					&& currentLink.flag == expectedFlag) {
 				final NextLink update = new NextLink (
-						replacementNode, null, replacementMark, replacementFlag);
+						replacementNode, replacementValue, replacementMark, replacementFlag);
 				final boolean set = NEXT_UPDATER.compareAndSet (
 						this, currentLink, update);
 				return set ? null : currentLink;
