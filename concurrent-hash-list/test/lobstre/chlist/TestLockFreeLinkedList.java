@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import lobstre.chlist.LockFreeLinkedList.NextLink;
+import lobstre.chlist.LockFreeLinkedList.Link;
 import lobstre.chlist.LockFreeLinkedList.Node;
 
 import org.junit.Test;
@@ -144,10 +144,10 @@ public class TestLockFreeLinkedList {
 		assertNotNull (node);
 		assertNull (node.backlink);
 		assertEquals (expectedKey, node.key);
-		assertEquals (expectedValue, node.value);
-		final NextLink next = node.next ();
-		assertFalse (next.flag);
-		assertFalse (next.mark);
-		assertNotNull (next.node);
+		final Link link = node.link ();
+		assertEquals (expectedValue, link.value);
+		assertFalse (link.flagged ());
+		assertFalse (link.marked ());
+		assertNotNull (link.next);
 	}
 }

@@ -94,27 +94,27 @@ public class LockFreeLinkedList {
 		
 		for (;;) {
 			final Node newNode = new Node (k, v, nextNode);
-			final NextLink prevNext = prevNode.next ();
-			if (prevNext.flag == true) {
+			final Link prevLink = prevNode.link ();
+			if (prevLink.flagged () == true) {
 				// If predecessor is flagged : help deletion to complete
-				helpFlagged (prevNode, prevNext.node);
+				helpFlagged (prevNode, prevLink.next);
 			} else {
-				final NextLink failed = prevNode.compareAndSetNext (
-					nextNode, false, false, 
-					newNode, false, false);
+				final Link failed = prevNode.compareAndSetLink (
+					nextNode, false, false, prevLink.value, 
+					newNode, false, false, prevLink.value);
 				if (failed == null) {
 					// Success
 					return newNode;
 				} else {
 					// Failure
-					if (failed.mark == false && failed.flag == true) {
+					if (failed.marked () == false && failed.flagged () == true) {
 						// Failure due to flagging : 
 						// Help complete deletion
-						helpFlagged (prevNode, failed.node);
+						helpFlagged (prevNode, failed.next);
 					}
 					// Possibly a failure due to marking 
 					// Help complete deletion: traverse the backlink chain
-					while (prevNode.next.mark == true) {
+					while (prevNode.link ().marked () == true) {
 						prevNode = prevNode.backlink;
 					}
 				}
@@ -177,7 +177,7 @@ public class LockFreeLinkedList {
 			final Node prevNode,
 			final Node delNode) {
 		delNode.backlink = prevNode;
-		if (!delNode.next ().mark) {
+		if (!delNode.link ().marked ()) {
 			tryMark (delNode);
 		}
 		helpMarked (prevNode, delNode);
@@ -185,47 +185,48 @@ public class LockFreeLinkedList {
 
 	private void tryMark (final Node delNode) {
 		do {
-			final Node nextNode = delNode.next ().node;
-			final NextLink failedLink = delNode.compareAndSetNext (
-					nextNode, false, false,
-					nextNode, true, false);
+		    Link delLink = delNode.link ();
+			final Node nextNode = delLink.next;
+			final Link failedLink = delNode.compareAndSetLink (
+					nextNode, false, false, delLink.value, 
+					nextNode, true, false, delLink.value);
 			if (null != failedLink && 
-					failedLink.mark == false && 
-					failedLink.flag == true) {
-				helpFlagged (delNode, failedLink.node);
+					failedLink.marked () == false && 
+					failedLink.flagged () == true) {
+				helpFlagged (delNode, failedLink.next);
 			}
-		} while (delNode.next ().mark != true);
+		} while (delNode.link ().marked () != true);
 	}
 
 	private Pair<Node, Boolean> tryFlag (Node prevNode,
 			final Node targetNode) {
 		for (;;) {
-			final NextLink next = prevNode.next ();
-			if (next.node == targetNode &&
-					!next.mark &&
-					next.flag) {
+			final Link prevLink = prevNode.link ();
+			if (prevLink.next == targetNode &&
+					!prevLink.marked () &&
+					prevLink.flagged ()) {
 				// Predecessor is already flagged
 				return new Pair<Node, Boolean> (
 						prevNode, Boolean.TRUE);
 			}
 			// Flagging attempt
-			final NextLink failed = prevNode.compareAndSetNext (
-					targetNode, false, false,
-					targetNode, false, true);
+			final Link failed = prevNode.compareAndSetLink (
+					targetNode, false, false, prevLink.value, 
+					targetNode, false, true, prevLink.value);
 			if (null == failed) {
 				// Successful flaging : report the success
 				return new Pair<Node, Boolean> (
 						prevNode, Boolean.TRUE);
 			}
-			if (failed.node == targetNode &&
-					failed.mark == false &&
-					failed.flag == true) {
+			if (failed.next == targetNode &&
+					failed.marked () == false &&
+					failed.flagged () == true) {
 				// Failure due to a concurrent operation
 				// Report the failure, return a pointer to prev node.
 				return new Pair<Node, Boolean> (
 						prevNode, Boolean.FALSE);
 			}
-			while (prevNode.next ().mark) {
+			while (prevNode.link ().marked ()) {
 				// Possibly a failure due to marking,
 				// Traverse a chain of backlinks to reach an unmarked node.
 				prevNode = prevNode.backlink;
@@ -249,21 +250,21 @@ public class LockFreeLinkedList {
 			final Object k,
 			Node currNode,
 			final Comparison c) {
-		Node nextNode = currNode.next ().node;
+		Node nextNode = currNode.link ().next;
 		while (c.apply (this.comparator.compare (nextNode.key, k), 0)) {
 			// Ensure that either nextNode is unmarked,
 			// or both currNode and nextNode are mark
 			// and currNode was mark earlier.
-			while (nextNode.next ().mark
-					&& (!currNode.next ().mark || currNode.next ().node != nextNode)) {
+			while (nextNode.link ().marked ()
+					&& (!currNode.link ().marked () || currNode.link ().next != nextNode)) {
 				if (currNode == nextNode) {
 					helpMarked (currNode, nextNode);
 				}
-				nextNode = currNode.next ().node;
+				nextNode = currNode.link ().next;
 			}
 			if (c.apply (this.comparator.compare (nextNode.key, k), 0)) {
 				currNode = nextNode;
-				nextNode = currNode.next ().node;
+				nextNode = currNode.link ().next;
 			}
 		}
 		return new Pair<Node, Node> (currNode, nextNode);
@@ -272,51 +273,59 @@ public class LockFreeLinkedList {
 	private void helpMarked (final Node prevNode, final Node delNode) {
 		// Attempts to physically delete the marked
 		// node delNode and unflag prevNode.
-		final Node nextNode = delNode.next ().node;
-		prevNode.compareAndSetNext (
-				delNode, false, true,
-				nextNode, false, false);
+		final Node nextNode = delNode.link ().next;
+		final Link prevLink = prevNode.link ();
+        prevNode.compareAndSetLink (
+				delNode, false, true, prevLink.value, 
+				nextNode, false, false, prevLink.value);
 	}
 
 	static class Node {
 		public Node (final Object key, final Object value, Node nextNode) {
 			this.key = key;
-			this.value = value;
-			this.next = new NextLink (nextNode, false, false);
+			NEXT_UPDATER.set (this, new Link (nextNode, value, false, false));
 			this.backlink = null;
 		}
 
-		public NextLink next () {
+		public Link link () {
 			return NEXT_UPDATER.get (this);
 		}
 
 		/**
-		 * CAS the next pointer
+		 * CAS the link pointer
 		 *
-		 * @param expectedNode
+		 * @param expectedNextNode
 		 *            the expected node
 		 * @param expectedMark
 		 *            the expected mark
 		 * @param expectedFlag
 		 *            the expected flag
-		 * @param replacementNode
+		 * @param expectedValue 
+	 *                the expected value
+		 * @param replacementNextNode
 		 *            the replacement node
 		 * @param replacementMark
 		 *            the replacement mark
 		 * @param replacementFlag
 		 *            the replacement flag
+         * @param replacementFlag
+         *            the replacement value            
 		 * @return null if CAS worked, or the previous value if CAS failed.
 		 */
-		public NextLink compareAndSetNext (final Node expectedNode,
-				final boolean expectedMark, final boolean expectedFlag,
-				final Node replacementNode,
-				final boolean replacementMark, final boolean replacementFlag) {
-			final NextLink currentLink = next ();
-			if (currentLink.node == expectedNode
-					&& currentLink.mark == expectedMark
-					&& currentLink.flag == expectedFlag) {
-				final NextLink update = new NextLink (
-						replacementNode, replacementMark, replacementFlag);
+		public Link compareAndSetLink (final Node expectedNextNode,
+				final boolean expectedMark, 
+				final boolean expectedFlag,
+				final Object expectedValue,
+				final Node replacementNextNode, 
+				final boolean replacementMark, 
+				final boolean replacementFlag, final Object replacementValue) {
+			final Link currentLink = link ();
+			if (currentLink.next == expectedNextNode
+					&& currentLink.marked () == expectedMark
+					&& currentLink.flagged () == expectedFlag
+					&& currentLink.value == expectedValue) {
+				final Link update = new Link (
+						replacementNextNode, replacementValue, replacementMark, replacementFlag);
 				final boolean set = NEXT_UPDATER.compareAndSet (
 						this, currentLink, update);
 				return set ? null : currentLink;
@@ -326,28 +335,38 @@ public class LockFreeLinkedList {
 		}
 
 		final Object key;
-		final Object value;
-		volatile NextLink next;
+		volatile Link link;
 		volatile Node backlink;
 
-		static final AtomicReferenceFieldUpdater<Node, NextLink> NEXT_UPDATER =
+		static final AtomicReferenceFieldUpdater<Node, Link> NEXT_UPDATER =
 				AtomicReferenceFieldUpdater
-						.newUpdater (Node.class, NextLink.class, "next");
+						.newUpdater (Node.class, Link.class, "link");
 	}
 
-	static class NextLink {
-		public NextLink (
-				final Node node,
-				final boolean mark,
+	static class Link {
+		public Link (
+				final Node next,
+				final Object value,
+				final boolean mark, 
 				final boolean flag) {
-			this.node = node;
+			this.next = next;
+			this.value = value;
 			this.mark = mark;
 			this.flag = flag;
 		}
-
-		final Node node;
+		
+		final Node next;
+		final Object value;
 		final boolean mark;
-		final boolean flag;
+        final boolean flag;
+        
+        public boolean marked () {
+            return mark;
+        }
+
+        public boolean flagged () {
+            return flag;
+        }
 	}
 
 	public interface Comparison {
