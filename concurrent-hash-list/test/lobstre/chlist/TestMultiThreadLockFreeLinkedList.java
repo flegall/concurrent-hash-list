@@ -136,7 +136,7 @@ public class TestMultiThreadLockFreeLinkedList {
 			assertNotNull (node.key);
 			assertNotNull (node.next ().value);
 			assertFalse (node.next ().marked ());
-			assertFalse (node.next ().flag);
+			assertFalse (node.next ().flagged ());
 			node = node.next ().node;
 		}
 		
@@ -144,7 +144,7 @@ public class TestMultiThreadLockFreeLinkedList {
 		assertEquals (LockFreeLinkedList.PLUS_INFINITE_KEY, tail.key);
 		assertEquals (LockFreeLinkedList.PLUS_INFINITE_KEY, tail.next ().value);
 		assertFalse (tail.next ().marked ());
-		assertFalse (tail.next ().flag);
+		assertFalse (tail.next ().flagged ());
 		assertNull (tail.next ().node);
 	}
 }

@@ -95,19 +95,19 @@ public class LockFreeLinkedList {
 		for (;;) {
 			final Node newNode = new Node (k, v, nextNode);
 			final NextLink prevNext = prevNode.next ();
-			if (prevNext.flag == true) {
+			if (prevNext.flagged () == true) {
 				// If predecessor is flagged : help deletion to complete
 				helpFlagged (prevNode, prevNext.node);
 			} else {
 				final NextLink failed = prevNode.compareAndSetNext (
-					nextNode, false, false, 
+					nextNode, false, false, prevNext.value, 
 					newNode, false, false, prevNext.value);
 				if (failed == null) {
 					// Success
 					return newNode;
 				} else {
 					// Failure
-					if (failed.marked () == false && failed.flag == true) {
+					if (failed.marked () == false && failed.flagged () == true) {
 						// Failure due to flagging : 
 						// Help complete deletion
 						helpFlagged (prevNode, failed.node);
@@ -185,13 +185,14 @@ public class LockFreeLinkedList {
 
 	private void tryMark (final Node delNode) {
 		do {
-			final Node nextNode = delNode.next ().node;
+		    NextLink delNext = delNode.next ();
+			final Node nextNode = delNext.node;
 			final NextLink failedLink = delNode.compareAndSetNext (
-					nextNode, false, false,
-					nextNode, true, false, null);
+					nextNode, false, false, delNext.value, 
+					nextNode, true, false, delNext.value);
 			if (null != failedLink && 
 					failedLink.marked () == false && 
-					failedLink.flag == true) {
+					failedLink.flagged () == true) {
 				helpFlagged (delNode, failedLink.node);
 			}
 		} while (delNode.next ().marked () != true);
@@ -203,14 +204,14 @@ public class LockFreeLinkedList {
 			final NextLink next = prevNode.next ();
 			if (next.node == targetNode &&
 					!next.marked () &&
-					next.flag) {
+					next.flagged ()) {
 				// Predecessor is already flagged
 				return new Pair<Node, Boolean> (
 						prevNode, Boolean.TRUE);
 			}
 			// Flagging attempt
 			final NextLink failed = prevNode.compareAndSetNext (
-					targetNode, false, false,
+					targetNode, false, false, next.value, 
 					targetNode, false, true, next.value);
 			if (null == failed) {
 				// Successful flaging : report the success
@@ -219,7 +220,7 @@ public class LockFreeLinkedList {
 			}
 			if (failed.node == targetNode &&
 					failed.marked () == false &&
-					failed.flag == true) {
+					failed.flagged () == true) {
 				// Failure due to a concurrent operation
 				// Report the failure, return a pointer to prev node.
 				return new Pair<Node, Boolean> (
@@ -273,10 +274,10 @@ public class LockFreeLinkedList {
 		// Attempts to physically delete the marked
 		// node delNode and unflag prevNode.
 		final Node nextNode = delNode.next ().node;
-		final NextLink prevNextnext = prevNode.next ();
+		final NextLink prevNext = prevNode.next ();
         prevNode.compareAndSetNext (
-				delNode, false, true,
-				nextNode, false, false, prevNextnext.value);
+				delNode, false, true, prevNext.value, 
+				nextNode, false, false, prevNext.value);
 	}
 
 	static class Node {
@@ -299,25 +300,30 @@ public class LockFreeLinkedList {
 		 *            the expected mark
 		 * @param expectedFlag
 		 *            the expected flag
+		 * @param expectedValue 
+	 *                the expected value
 		 * @param replacementNode
 		 *            the replacement node
 		 * @param replacementMark
 		 *            the replacement mark
 		 * @param replacementFlag
 		 *            the replacement flag
+         * @param replacementFlag
+         *            the replacement value            
 		 * @return null if CAS worked, or the previous value if CAS failed.
 		 */
 		public NextLink compareAndSetNext (final Node expectedNode,
 				final boolean expectedMark, 
 				final boolean expectedFlag,
-				final Node replacementNode,
+				final Object expectedValue,
+				final Node replacementNode, 
 				final boolean replacementMark, 
-				final boolean replacementFlag, 
-				final Object replacementValue) {
+				final boolean replacementFlag, final Object replacementValue) {
 			final NextLink currentLink = next ();
 			if (currentLink.node == expectedNode
 					&& currentLink.marked () == expectedMark
-					&& currentLink.flag == expectedFlag) {
+					&& currentLink.flagged () == expectedFlag
+					&& currentLink.value == expectedValue) {
 				final NextLink update = new NextLink (
 						replacementNode, replacementValue, replacementMark, replacementFlag);
 				final boolean set = NEXT_UPDATER.compareAndSet (
@@ -348,7 +354,7 @@ public class LockFreeLinkedList {
 			this.mark = mark;
 			this.flag = flag;
 		}
-
+		
 		final Node node;
 		final Object value;
 		final boolean mark;
@@ -356,6 +362,10 @@ public class LockFreeLinkedList {
         
         public boolean marked () {
             return mark;
+        }
+
+        public boolean flagged () {
+            return flag;
         }
 	}
 
