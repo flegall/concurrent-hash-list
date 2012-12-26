@@ -288,7 +288,7 @@ public class LockFreeLinkedList {
 		}
 
 		public Link link () {
-			return NEXT_UPDATER.get (this);
+			return this.link;
 		}
 
 		/**
