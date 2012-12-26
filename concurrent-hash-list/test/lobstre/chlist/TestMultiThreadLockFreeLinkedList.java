@@ -132,19 +132,19 @@ public class TestMultiThreadLockFreeLinkedList {
 		assertNull (head.backlink);
 		
 		Node node = head;
-		while (node.next.node != null) {
+		while (node.next ().node != null) {
 			assertNotNull (node.key);
 			assertNotNull (node.value);
-			assertFalse (node.next.mark);
-			assertFalse (node.next.flag);
-			node = node.next.node;
+			assertFalse (node.next ().marked ());
+			assertFalse (node.next ().flag);
+			node = node.next ().node;
 		}
 		
 		final Node tail = node;
 		assertEquals (LockFreeLinkedList.PLUS_INFINITE_KEY, tail.key);
 		assertEquals (LockFreeLinkedList.PLUS_INFINITE_KEY, tail.value);
-		assertFalse (tail.next.mark);
-		assertFalse (tail.next.flag);
-		assertNull (tail.next.node);
+		assertFalse (tail.next ().marked ());
+		assertFalse (tail.next ().flag);
+		assertNull (tail.next ().node);
 	}
 }

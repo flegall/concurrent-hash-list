@@ -107,14 +107,14 @@ public class LockFreeLinkedList {
 					return newNode;
 				} else {
 					// Failure
-					if (failed.mark == false && failed.flag == true) {
+					if (failed.marked () == false && failed.flag == true) {
 						// Failure due to flagging : 
 						// Help complete deletion
 						helpFlagged (prevNode, failed.node);
 					}
 					// Possibly a failure due to marking 
 					// Help complete deletion: traverse the backlink chain
-					while (prevNode.next.mark == true) {
+					while (prevNode.next ().marked () == true) {
 						prevNode = prevNode.backlink;
 					}
 				}
@@ -177,7 +177,7 @@ public class LockFreeLinkedList {
 			final Node prevNode,
 			final Node delNode) {
 		delNode.backlink = prevNode;
-		if (!delNode.next ().mark) {
+		if (!delNode.next ().marked ()) {
 			tryMark (delNode);
 		}
 		helpMarked (prevNode, delNode);
@@ -190,11 +190,11 @@ public class LockFreeLinkedList {
 					nextNode, false, false,
 					nextNode, true, false);
 			if (null != failedLink && 
-					failedLink.mark == false && 
+					failedLink.marked () == false && 
 					failedLink.flag == true) {
 				helpFlagged (delNode, failedLink.node);
 			}
-		} while (delNode.next ().mark != true);
+		} while (delNode.next ().marked () != true);
 	}
 
 	private Pair<Node, Boolean> tryFlag (Node prevNode,
@@ -202,7 +202,7 @@ public class LockFreeLinkedList {
 		for (;;) {
 			final NextLink next = prevNode.next ();
 			if (next.node == targetNode &&
-					!next.mark &&
+					!next.marked () &&
 					next.flag) {
 				// Predecessor is already flagged
 				return new Pair<Node, Boolean> (
@@ -218,14 +218,14 @@ public class LockFreeLinkedList {
 						prevNode, Boolean.TRUE);
 			}
 			if (failed.node == targetNode &&
-					failed.mark == false &&
+					failed.marked () == false &&
 					failed.flag == true) {
 				// Failure due to a concurrent operation
 				// Report the failure, return a pointer to prev node.
 				return new Pair<Node, Boolean> (
 						prevNode, Boolean.FALSE);
 			}
-			while (prevNode.next ().mark) {
+			while (prevNode.next ().marked ()) {
 				// Possibly a failure due to marking,
 				// Traverse a chain of backlinks to reach an unmarked node.
 				prevNode = prevNode.backlink;
@@ -254,8 +254,8 @@ public class LockFreeLinkedList {
 			// Ensure that either nextNode is unmarked,
 			// or both currNode and nextNode are mark
 			// and currNode was mark earlier.
-			while (nextNode.next ().mark
-					&& (!currNode.next ().mark || currNode.next ().node != nextNode)) {
+			while (nextNode.next ().marked ()
+					&& (!currNode.next ().marked () || currNode.next ().node != nextNode)) {
 				if (currNode == nextNode) {
 					helpMarked (currNode, nextNode);
 				}
@@ -282,7 +282,7 @@ public class LockFreeLinkedList {
 		public Node (final Object key, final Object value, Node nextNode) {
 			this.key = key;
 			this.value = value;
-			this.next = new NextLink (nextNode, false, false);
+			this.next = new NextLink (nextNode, null, false, false);
 			this.backlink = null;
 		}
 
@@ -313,10 +313,10 @@ public class LockFreeLinkedList {
 				final boolean replacementMark, final boolean replacementFlag) {
 			final NextLink currentLink = next ();
 			if (currentLink.node == expectedNode
-					&& currentLink.mark == expectedMark
+					&& currentLink.marked () == expectedMark
 					&& currentLink.flag == expectedFlag) {
 				final NextLink update = new NextLink (
-						replacementNode, replacementMark, replacementFlag);
+						replacementNode, null, replacementMark, replacementFlag);
 				final boolean set = NEXT_UPDATER.compareAndSet (
 						this, currentLink, update);
 				return set ? null : currentLink;
@@ -338,16 +338,23 @@ public class LockFreeLinkedList {
 	static class NextLink {
 		public NextLink (
 				final Node node,
-				final boolean mark,
+				final Object value,
+				final boolean mark, 
 				final boolean flag) {
 			this.node = node;
+			this.value = null;
 			this.mark = mark;
 			this.flag = flag;
 		}
 
 		final Node node;
+		final Object value;
 		final boolean mark;
-		final boolean flag;
+        final boolean flag;
+        
+        public boolean marked () {
+            return mark;
+        }
 	}
 
 	public interface Comparison {
