@@ -101,7 +101,7 @@ public class LockFreeLinkedList {
 			} else {
 				final NextLink failed = prevNode.compareAndSetNext (
 					nextNode, false, false, 
-					newNode, false, false, v);
+					newNode, false, false, prevNext.value);
 				if (failed == null) {
 					// Success
 					return newNode;
@@ -211,7 +211,7 @@ public class LockFreeLinkedList {
 			// Flagging attempt
 			final NextLink failed = prevNode.compareAndSetNext (
 					targetNode, false, false,
-					targetNode, false, true, null);
+					targetNode, false, true, next.value);
 			if (null == failed) {
 				// Successful flaging : report the success
 				return new Pair<Node, Boolean> (
@@ -282,7 +282,6 @@ public class LockFreeLinkedList {
 	static class Node {
 		public Node (final Object key, final Object value, Node nextNode) {
 			this.key = key;
-			this.value = value;
 			this.next = new NextLink (nextNode, value, false, false);
 			this.backlink = null;
 		}
@@ -330,7 +329,6 @@ public class LockFreeLinkedList {
 		}
 
 		final Object key;
-		final Object value;
 		volatile NextLink next;
 		volatile Node backlink;
 
@@ -346,7 +344,7 @@ public class LockFreeLinkedList {
 				final boolean mark, 
 				final boolean flag) {
 			this.node = node;
-			this.value = null;
+			this.value = value;
 			this.mark = mark;
 			this.flag = flag;
 		}

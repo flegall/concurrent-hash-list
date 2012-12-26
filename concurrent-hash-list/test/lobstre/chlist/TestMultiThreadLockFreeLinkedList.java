@@ -128,13 +128,13 @@ public class TestMultiThreadLockFreeLinkedList {
 	static void checkSanity (final LockFreeLinkedList ll) {
 		final Node head = ll.getHead ();
 		assertEquals (LockFreeLinkedList.MINUS_INFINITE_KEY, head.key);
-		assertEquals (LockFreeLinkedList.MINUS_INFINITE_KEY, head.value);
+		assertEquals (LockFreeLinkedList.MINUS_INFINITE_KEY, head.next ().value);
 		assertNull (head.backlink);
 		
 		Node node = head;
 		while (node.next ().node != null) {
 			assertNotNull (node.key);
-			assertNotNull (node.value);
+			assertNotNull (node.next ().value);
 			assertFalse (node.next ().marked ());
 			assertFalse (node.next ().flag);
 			node = node.next ().node;
@@ -142,7 +142,7 @@ public class TestMultiThreadLockFreeLinkedList {
 		
 		final Node tail = node;
 		assertEquals (LockFreeLinkedList.PLUS_INFINITE_KEY, tail.key);
-		assertEquals (LockFreeLinkedList.PLUS_INFINITE_KEY, tail.value);
+		assertEquals (LockFreeLinkedList.PLUS_INFINITE_KEY, tail.next ().value);
 		assertFalse (tail.next ().marked ());
 		assertFalse (tail.next ().flag);
 		assertNull (tail.next ().node);

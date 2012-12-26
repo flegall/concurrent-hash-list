@@ -144,8 +144,8 @@ public class TestLockFreeLinkedList {
 		assertNotNull (node);
 		assertNull (node.backlink);
 		assertEquals (expectedKey, node.key);
-		assertEquals (expectedValue, node.value);
 		final NextLink next = node.next ();
+		assertEquals (expectedValue, next.value);
 		assertFalse (next.flag);
 		assertFalse (next.marked ());
 		assertNotNull (next.node);
